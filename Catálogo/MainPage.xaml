@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Catalogo.MainPage"
+             Title="MainPage"
+             BackgroundColor="#F4EFE6">
+
+    <ScrollView>
+
+        <VerticalStackLayout Padding="20" Spacing="15">
+            <Label Text="Cadastrar Produto"
+                   FontSize="24"
+                   FontAttributes="Bold"
+                   TextColor="#3A1E1E"
+                   HorizontalOptions="Center" />
+
+            <Label Text="Nome do Produto:" TextColor="#3A1E1E" FontAttributes="Bold"/>
+            <Entry x:Name="CampoNome"
+                   Placeholder="Ex: Queijo Colonial Artesanal"
+                   BackgroundColor="White"
+                   TextColor="Black" />
+
+            <Label Text="Detalhes / Peso:" TextColor="#3A1E1E" FontAttributes="Bold" />
+            <Entry x:Name="CampoDescricao"
+                   Placeholder="Ex: Temperado com Orégano • 550g"
+                   BackgroundColor="White"
+                   TextColor="Black" />
+
+            <Label Text="Preço (R$):" TextColor="#3A1E1E" FontAttributes="Bold" />
+            <Entry x:Name="CampoPreco"
+                   Placeholder="Ex: 40.00"
+                   Keyboard="Numeric"
+                   BackgroundColor="White"
+                   TextColor="Black" />
+
+            <HorizontalStackLayout Spacing="10" VerticalOptions="Center">
+                <Label Text="Controlar Estoque deste produto?" TextColor="#3A1E1E" VerticalOptions="Center" />
+                <Switch x:Name="ChaveEstoque" Toggled="OnChaveEstoqueModificada" />
+            </HorizontalStackLayout>
+
+            <VerticalStackLayout x:Name="PainelQuantidade" IsVisible="False" Spacing="5">
+                <Label Text="Quantidade Disponível em Estoque:" TextColor="#3A1E1E" FontAttributes="Bold" />
+                <Entry x:Name="CampoQuantidade"
+                   Placeholder="Ex: 15"
+                   Keyboard="Numeric"
+                   BackgroundColor="White"
+                   TextColor="Black" />
+
+            </VerticalStackLayout>
+
+            <Button Text="📷 Tirar Foto do Produto"
+                Clicked="OnTirarFotoClicado"
+                BackgroundColor="#5A4A42"
+                TextColor="White" />
+
+            <Label x:Name="LabelCaminhoFoto" Text="Nenhuma foto selecionada" TextColor="Gray" FontSize="12" HorizontalOptions="Center"/>
+
+            <Button Text="💾 Salvar e Gerar Catálogo PDF"
+                Clicked="OnSalvarEGerarPdfClicado"
+                BackgroundColor="#D4AF37"
+                TextColor="White"
+                FontAttributes="Bold"
+                FontSize="16"
+                Margin="0,10,0,0" />
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
