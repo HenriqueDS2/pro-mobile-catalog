@@ -1,32 +1,130 @@
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
+using System.Collections.ObjectModel;
+using System.Linq;
 
 namespace Catalogo;
 
 public partial class MainPage : ContentPage
 {
     private readonly DatabaseService _bancoDeDados = new DatabaseService();
-    private string _caminhoFotoTemporaria = "";
+
+    public ObservableCollection<Produto> ProdutosLista { get; set; } = new ObservableCollection<Produto>();
 
     public MainPage()
     {
         InitializeComponent();
         QuestPDF.Settings.License = LicenseType.Community;
+
+        BindingContext = this;
+        CarregarProdutosDoBancoAsync();
     }
 
-    private void OnChaveEstoqueModificada(object? sender, ToggledEventArgs e)
+    private async void CarregarProdutosDoBancoAsync()
     {
-        PainelQuantidade.IsVisible = e.Value;
-    }
+        var produtosDoBanco = await _bancoDeDados.ObterTodosProdutosAsync();
 
-    private async void OnTirarFotoClicado(object? sender, EventArgs e)
-    {
-        try
+        ProdutosLista.Clear();
+        foreach (var prod in produtosDoBanco)
         {
-            if (MediaPicker.Default.IsCaptureSupported)
+            ProdutosLista.Add(prod);
+        }
+
+        if (ProdutosLista.Count == 0)
+        {
+            var primeiroProduto = new Produto();
+            await _bancoDeDados.SalvarProdutoAsync(primeiroProduto);
+            ProdutosLista.Add(primeiroProduto);
+        }
+
+        ListaProdutosVisual.ItemsSource = ProdutosLista;
+    }
+
+    private async void OnAdicionarProdutoClicado(object? sender, EventArgs e)
+    {
+        var novoProd = new Produto();
+        await _bancoDeDados.SalvarProdutoAsync(novoProd);
+        ProdutosLista.Add(novoProd);
+
+        ListaProdutosVisual.ScrollTo(novoProd);
+    }
+
+    private async void OnRemoverProdutoClicado(object? sender, EventArgs e)
+    {
+        if (sender is Button botao && botao.CommandParameter is Produto produtoParaRemover)
+        {
+            bool aceitou = await this.DisplayAlertAsync("Confirmação", $"Deseja mesmo remover este item do catálogo?", "Sim", "Não");
+            if (!aceitou) return;
+
+            await _bancoDeDados.DeletarProdutoAsync(produtoParaRemover);
+            ProdutosLista.Remove(produtoParaRemover);
+
+            if (ProdutosLista.Count == 0)
             {
-                FileResult? foto = await MediaPicker.Default.CapturePhotoAsync();
+                var blocoReserva = new Produto();
+                await _bancoDeDados.SalvarProdutoAsync(blocoReserva);
+                ProdutosLista.Add(blocoReserva);
+            }
+        }
+    }
+
+    private async void OnCampoMudouFoco(object? sender, FocusEventArgs e)
+    {
+        if (sender is Entry campo && campo.BindingContext is Produto produtoAtual)
+        {
+            await _bancoDeDados.SalvarProdutoAsync(produtoAtual);
+        }
+    }
+
+    private async void OnSwitchEstoqueModificado(object? sender, ToggledEventArgs e)
+    {
+        if (sender is Switch chave && chave.BindingContext is Produto produtoAtual)
+        {
+            await _bancoDeDados.SalvarProdutoAsync(produtoAtual);
+        }
+    }
+
+    private async void OnTirarFotoItemClicado(object? sender, EventArgs e)
+    {
+        if (sender is Button botao && botao.CommandParameter is Produto produtoAtual)
+        {
+            try
+            {
+                if (MediaPicker.Default.IsCaptureSupported)
+                {
+                    FileResult? foto = await MediaPicker.Default.CapturePhotoAsync();
+                    if (foto != null)
+                    {
+                        string pastaDoApp = FileSystem.AppDataDirectory;
+                        string caminhoFinal = Path.Combine(pastaDoApp, foto.FileName);
+
+                        using Stream fluxoOrigem = await foto.OpenReadAsync();
+                        using Stream fluxoDestino = File.Create(caminhoFinal);
+                        await fluxoOrigem.CopyToAsync(fluxoDestino);
+
+                        produtoAtual.CaminhoImagem = caminhoFinal;
+                        await _bancoDeDados.SalvarProdutoAsync(produtoAtual);
+
+                        CarregarProdutosDoBancoAsync();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                await this.DisplayAlertAsync("Erro", $"Falha na câmera: {ex.Message}", "OK");
+            }
+        }
+    }
+
+    private async void OnEscolherFotoItemClicado(object? sender, EventArgs e)
+    {
+        if (sender is Button botao && botao.CommandParameter is Produto produtoAtual)
+        {
+            try
+            {
+                var resultados = await MediaPicker.Default.PickPhotosAsync(new MediaPickerOptions { SelectionLimit = 1 });
+                FileResult? foto = resultados?.FirstOrDefault();
 
                 if (foto != null)
                 {
@@ -34,59 +132,40 @@ public partial class MainPage : ContentPage
                     string caminhoFinal = Path.Combine(pastaDoApp, foto.FileName);
 
                     using Stream fluxoOrigem = await foto.OpenReadAsync();
-                    using FileStream fluxoDestino = File.OpenWrite(caminhoFinal);
+                    using Stream fluxoDestino = File.Create(caminhoFinal);
                     await fluxoOrigem.CopyToAsync(fluxoDestino);
 
-                    _caminhoFotoTemporaria = caminhoFinal;
-                    LabelCaminhoFoto.Text = "Foto capturada com sucesso!";
-                    LabelCaminhoFoto.TextColor = Microsoft.Maui.Graphics.Colors.Green;
+                    produtoAtual.CaminhoImagem = caminhoFinal;
+                    await _bancoDeDados.SalvarProdutoAsync(produtoAtual);
+
+                    CarregarProdutosDoBancoAsync();
                 }
             }
-            else
+            catch (Exception ex)
             {
-                await this.DisplayAlertAsync("Erro", "Câmera não suportada neste aparelho.", "OK");
+                await this.DisplayAlertAsync("Erro", $"Falha na galeria: {ex.Message}", "OK");
             }
-        }
-        catch (Exception ex)
-        {
-            await this.DisplayAlertAsync("Erro", $"Falha ao abrir câmera: {ex.Message}", "OK");
         }
     }
 
-    private async void OnSalvarEGerarPdfClicado(object? sender, EventArgs e)
+    private async void OnGerarPdfFinalClicado(object? sender, EventArgs e)
     {
-        if (string.IsNullOrWhiteSpace(CampoNome.Text) || string.IsNullOrWhiteSpace(CampoPreco.Text))
+        List<Produto> listaFiltrada = ProdutosLista.Where(p => !string.IsNullOrWhiteSpace(p.Nome)).ToList();
+
+        if (listaFiltrada.Count == 0)
         {
-            await this.DisplayAlertAsync("Atenção", "Preencha o Nome e o Preço para continuar.", "OK");
+            await this.DisplayAlertAsync("Atenção", "Preencha pelo menos o Nome de um produto para gerar o catálogo.", "OK");
             return;
         }
 
-        decimal.TryParse(CampoPreco.Text, out decimal precoConvertido);
-        int.TryParse(CampoQuantidade.Text, out int quantidadeConvertida);
-
-        var produtoCadastro = new Produto
-        {
-            Nome = CampoNome.Text,
-            Descricao = CampoDescricao.Text ?? "",
-            Preco = precoConvertido,
-            CaminhoImagem = _caminhoFotoTemporaria,
-            UsarEstoque = ChaveEstoque.IsToggled,
-            QuantidadeEstoque = quantidadeConvertida
-        };
-
-        await _bancoDeDados.SalvarProdutoAsync(produtoCadastro);
-
-        string nomeArquivoPdf = $"Produto_{DateTime.Now:yyyyMMdd_HHmmss}.pdf";
+        string nomeArquivoPdf = $"Catalogo_Produtos_{DateTime.Now:yyyyMMdd_HHmmss}.pdf";
         string caminhoPdf = Path.Combine(FileSystem.CacheDirectory, nomeArquivoPdf);
 
-        CriarLayoutPdf(caminhoPdf, produtoCadastro);
-
-        await CompartilharArquivoPdf(caminhoPdf, produtoCadastro.Nome);
-
-        LimparFormulario();
+        CriarLayoutPdf(caminhoPdf, listaFiltrada);
+        await CompartilharArquivoPdf(caminhoPdf, "Catálogo Digital");
     }
 
-    private void CriarLayoutPdf(string caminhoSalvar, Produto produto)
+    private void CriarLayoutPdf(string caminhoSalvar, List<Produto> produtos)
     {
         Document.Create(container =>
         {
@@ -96,54 +175,54 @@ public partial class MainPage : ContentPage
                 page.Margin(1.5f, Unit.Centimetre);
                 page.PageColor("#F4EFE6");
 
-                page.Content().Border(1, Unit.Point).BorderColor("#D4C5B3").Padding(30).Column(col =>
+                page.Content().PaddingVertical(10).Column(col =>
                 {
-                    col.Item().Text(produto.Nome)
-                        .FontFamily("Georgia")
-                        .FontSize(28)
-                        .Bold()
-                        .FontColor("#3A1E1E")
-                        .AlignCenter();
+                    for (int i = 0; i < produtos.Count; i++)
+                    {
+                        var prod = produtos[i];
 
-                    string textoDetalhes = produto.Descricao;
-                    if (produto.UsarEstoque)
-                    {
-                        textoDetalhes += $" • Disponível: {produto.QuantidadeEstoque} un";
-                    }
+                        if (i > 0)
+                        {
+                            col.Item().PageBreak();
+                        }
 
-                    if (!string.IsNullOrWhiteSpace(textoDetalhes))
-                    {
-                        col.Item().PaddingTop(5).Text(textoDetalhes)
-                            .FontFamily("Arial")
-                            .FontSize(14)
-                            .FontColor("#5A4A42")
-                            .AlignCenter();
-                    }
+                        col.Item().PaddingBottom(10).AlignCenter().Width(450).Border(1, Unit.Point).BorderColor("#D4C5B3").Background("#FFFFFF").Padding(25).Column(card =>
+                        {
+                            card.Item().Text(prod.Nome)
+                                .FontFamily("Georgia").FontSize(24).Bold().FontColor("#3A1E1E").AlignCenter();
 
-                    if (!string.IsNullOrWhiteSpace(produto.CaminhoImagem) && File.Exists(produto.CaminhoImagem))
-                    {
-                        col.Item().PaddingTop(25).PaddingBottom(25).AlignCenter().Width(350).Height(400).Image(produto.CaminhoImagem);
-                    }
-                    else
-                    {
-                        col.Item().PaddingTop(50).PaddingBottom(50).AlignCenter().Text("[ Sem Foto do Produto ]").FontColor("#5A4A42").Italic();
-                    }
+                            string textoDetalhes = prod.Descricao;
+                            if (prod.UsarEstoque)
+                            {
+                                textoDetalhes += $" • Disponível: {prod.QuantidadeEstoque} un";
+                            }
 
-                    // CORRIGIDO LINHA 132: Estrutura refinada para aplicar fundo colorido e bordas perfeitamente
-                    col.Item().AlignCenter().Background("#D4AF37").PaddingVertical(8).PaddingHorizontal(25).Column(precoCol =>
-                    {
-                        precoCol.Item().Text($"R$ {produto.Preco:N2}")
-                            .FontFamily("Arial")
-                            .FontSize(18)
-                            .Bold()
-                            .FontColor("#FFFFFF")
-                            .AlignCenter();
-                    });
+                            if (!string.IsNullOrWhiteSpace(textoDetalhes))
+                            {
+                                card.Item().PaddingTop(5).Text(textoDetalhes)
+                                  .FontFamily("Arial").FontSize(14).FontColor("#5A4A42").AlignCenter();
+                            }
+
+                            if (!string.IsNullOrWhiteSpace(prod.CaminhoImagem) && File.Exists(prod.CaminhoImagem))
+                            {
+                                card.Item().PaddingTop(20).PaddingBottom(20).AlignCenter().Width(300).Height(300).Image(prod.CaminhoImagem);
+                            }
+                            else
+                            {
+                                card.Item().PaddingTop(40).PaddingBottom(40).AlignCenter().Text("[ Sem Foto ]").FontColor("#5A4A42").Italic();
+                            }
+
+                            card.Item().AlignCenter().Background("#D4AF37").PaddingVertical(8).PaddingHorizontal(25).Column(precoCol =>
+                            {
+                                precoCol.Item().Text($"R$ {prod.Preco:N2}")
+                                    .FontFamily("Arial").FontSize(16).Bold().FontColor("#FFFFFF").AlignCenter();
+                            });
+                        });
+                    }
                 });
             });
         }).GeneratePdf(caminhoSalvar);
     }
-
     private async Task CompartilharArquivoPdf(string caminhoPdf, string nomeProduto)
     {
         if (File.Exists(caminhoPdf))
@@ -154,17 +233,5 @@ public partial class MainPage : ContentPage
                 File = new ShareFile(caminhoPdf)
             });
         }
-    }
-
-    private void LimparFormulario()
-    {
-        CampoNome.Text = "";
-        CampoDescricao.Text = "";
-        CampoPreco.Text = "";
-        CampoQuantidade.Text = "";
-        ChaveEstoque.IsToggled = false;
-        _caminhoFotoTemporaria = "";
-        LabelCaminhoFoto.Text = "Nenhuma foto selecionada";
-        LabelCaminhoFoto.TextColor = Microsoft.Maui.Graphics.Colors.Gray;
     }
 }

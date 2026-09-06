@@ -5,64 +5,116 @@
              Title="MainPage"
              BackgroundColor="#F4EFE6">
 
-    <ScrollView>
+    <!-- Grid para travar o cabeçalho e o rodapé, deixando só o miolo rolar -->
+    <Grid RowDefinitions="Auto, *, Auto" Padding="15" RowSpacing="10">
 
-        <VerticalStackLayout Padding="20" Spacing="15">
-            <Label Text="Cadastrar Produto"
+        <!-- TOPO: Título e Botão de Adicionar Mais Um Bloco -->
+        <VerticalStackLayout Grid.Row="0" Spacing="10">
+            <Label Text="Catálogo Prático Dinâmico"
                    FontSize="24"
                    FontAttributes="Bold"
                    TextColor="#3A1E1E"
                    HorizontalOptions="Center" />
 
-            <Label Text="Nome do Produto:" TextColor="#3A1E1E" FontAttributes="Bold"/>
-            <Entry x:Name="CampoNome"
-                   Placeholder="Ex: Queijo Colonial Artesanal"
-                   BackgroundColor="White"
-                   TextColor="Black" />
+            <Button Text="➕ Adicionar Novo Produto ao Catálogo"
+                    Clicked="OnAdicionarProdutoClicado"
+                    BackgroundColor="#4A5A42"
+                    TextColor="White"
+                    FontAttributes="Bold"
+                    HeightRequest="50" />
+        </VerticalStackLayout>
 
-            <Label Text="Detalhes / Peso:" TextColor="#3A1E1E" FontAttributes="Bold" />
-            <Entry x:Name="CampoDescricao"
-                   Placeholder="Ex: Temperado com Orégano • 550g"
-                   BackgroundColor="White"
-                   TextColor="Black" />
+        <!-- MIOLO: Lista Rolável Dinâmica de Blocos de Produtos -->
+        <CollectionView Grid.Row="1" x:Name="ListaProdutosVisual">
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <!-- Card de cada Produto -->
+                    <Border Stroke="#D4C5B3" StrokeThickness="1" BackgroundColor="White" Padding="15" Margin="0,0,0,15">
+                        <VerticalStackLayout Spacing="12">
 
-            <Label Text="Preço (R$):" TextColor="#3A1E1E" FontAttributes="Bold" />
-            <Entry x:Name="CampoPreco"
-                   Placeholder="Ex: 40.00"
-                   Keyboard="Numeric"
-                   BackgroundColor="White"
-                   TextColor="Black" />
+                            <!-- Linha de Cabeçalho do Card com Botão de Menos -->
+                            <Grid ColumnDefinitions="*, Auto">
+                                <Label Grid.Column="0" Text="Item do Catálogo" FontAttributes="Bold" TextColor="#5A4A42" VerticalOptions="Center"/>
+                                <Button Grid.Column="1" 
+                                        Text="❌ Remover" 
+                                        Clicked="OnRemoverProdutoClicado" 
+                                        CommandParameter="{Binding .}"
+                                        BackgroundColor="#BA3C3C" 
+                                        TextColor="White" 
+                                        HeightRequest="35" 
+                                        Padding="10,0" />
+                            </Grid>
 
-            <HorizontalStackLayout Spacing="10" VerticalOptions="Center">
-                <Label Text="Controlar Estoque deste produto?" TextColor="#3A1E1E" VerticalOptions="Center" />
-                <Switch x:Name="ChaveEstoque" Toggled="OnChaveEstoqueModificada" />
-            </HorizontalStackLayout>
+                            <!-- Campo Nome (Atualiza o Banco ao mudar o foco) -->
+                            <Label Text="Nome do Produto:" TextColor="#3A1E1E" FontAttributes="Bold"/>
+                            <Entry Text="{Binding Nome}"
+                                   Unfocused="OnCampoMudouFoco"
+                                   Placeholder="Ex: Queijo Colonial Artesanal"
+                                   TextColor="Black" 
+                                   BackgroundColor="#F9F9F9"/>
 
-            <VerticalStackLayout x:Name="PainelQuantidade" IsVisible="False" Spacing="5">
-                <Label Text="Quantidade Disponível em Estoque:" TextColor="#3A1E1E" FontAttributes="Bold" />
-                <Entry x:Name="CampoQuantidade"
-                   Placeholder="Ex: 15"
-                   Keyboard="Numeric"
-                   BackgroundColor="White"
-                   TextColor="Black" />
+                            <!-- Campo Detalhes -->
+                            <Label Text="Detalhes / Peso:" TextColor="#3A1E1E" FontAttributes="Bold" />
+                            <Entry Text="{Binding Descricao}"
+                                   Unfocused="OnCampoMudouFoco"
+                                   Placeholder="Ex: Temperado com Orégano • 550g"
+                                   TextColor="Black" 
+                                   BackgroundColor="#F9F9F9"/>
 
-            </VerticalStackLayout>
+                            <!-- Campo Preço -->
+                            <Label Text="Preço (R$):" TextColor="#3A1E1E" FontAttributes="Bold" />
+                            <Entry Text="{Binding Preco}"
+                                   Unfocused="OnCampoMudouFoco"
+                                   Placeholder="Ex: 40.00"
+                                   Keyboard="Numeric"
+                                   TextColor="Black" 
+                                   BackgroundColor="#F9F9F9"/>
 
-            <Button Text="📷 Tirar Foto do Produto"
-                Clicked="OnTirarFotoClicado"
-                BackgroundColor="#5A4A42"
-                TextColor="White" />
+                            <!-- Interruptor do Estoque -->
+                            <HorizontalStackLayout Spacing="10" VerticalOptions="Center">
+                                <Label Text="Controlar Estoque?" TextColor="#3A1E1E" VerticalOptions="Center" />
+                                <Switch IsToggled="{Binding UsarEstoque}" 
+                                        Toggled="OnSwitchEstoqueModificado" />
+                            </HorizontalStackLayout>
 
-            <Label x:Name="LabelCaminhoFoto" Text="Nenhuma foto selecionada" TextColor="Gray" FontSize="12" HorizontalOptions="Center"/>
+                            <!-- Campo Quantidade (Sua visibilidade agora é controlada individualmente) -->
+                            <VerticalStackLayout IsVisible="{Binding UsarEstoque}" Spacing="5">
+                                <Label Text="Quantidade Disponível:" TextColor="#3A1E1E" FontAttributes="Bold" />
+                                <Entry Text="{Binding QuantidadeEstoque}"
+                                       Unfocused="OnCampoMudouFoco"
+                                       Placeholder="Ex: 15"
+                                       Keyboard="Numeric"
+                                       TextColor="Black" 
+                                       BackgroundColor="#F9F9F9"/>
+                            </VerticalStackLayout>
 
-            <Button Text="💾 Salvar e Gerar Catálogo PDF"
-                Clicked="OnSalvarEGerarPdfClicado"
+                            <!-- Exibição da Imagem Real Escolhida pelo Usuário direto no App -->
+                            <Image Source="{Binding CaminhoImagem}" 
+                                   HeightRequest="180" 
+                                   Aspect="AspectFit" 
+                                   HorizontalOptions="Center" 
+                                   Margin="0,5"/>
+
+                            <!-- Botões de Mídia do Card -->
+                            <Grid ColumnDefinitions="*, *" ColumnSpacing="10">
+                                <Button Grid.Column="0" Text="📷 Câmera" Clicked="OnTirarFotoItemClicado" CommandParameter="{Binding .}" BackgroundColor="#5A4A42" TextColor="White" />
+                                <Button Grid.Column="1" Text="🖼️ Galeria" Clicked="OnEscolherFotoItemClicado" CommandParameter="{Binding .}" BackgroundColor="#6A7A62" TextColor="White" />
+                            </Grid>
+
+                        </VerticalStackLayout>
+                    </Border>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+        <!-- RODAPÉ: Botão de Fechamento Único para o PDF -->
+        <Button Grid.Row="2" 
+                Text="💾 Gerar Catálogo Completo em PDF"
+                Clicked="OnGerarPdfFinalClicado"
                 BackgroundColor="#D4AF37"
                 TextColor="White"
                 FontAttributes="Bold"
                 FontSize="16"
-                Margin="0,10,0,0" />
-
-        </VerticalStackLayout>
-    </ScrollView>
+                HeightRequest="55" />
+    </Grid>
 </ContentPage>
