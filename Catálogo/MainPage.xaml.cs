@@ -172,10 +172,9 @@ public partial class MainPage : ContentPage
             container.Page(page =>
             {
                 page.Size(PageSizes.A4);
-                page.Margin(1.5f, Unit.Centimetre);
-                page.PageColor("#F4EFE6");
+                page.Margin(0);
 
-                page.Content().PaddingVertical(10).Column(col =>
+                page.Content().Column(coluna =>
                 {
                     for (int i = 0; i < produtos.Count; i++)
                     {
@@ -183,46 +182,115 @@ public partial class MainPage : ContentPage
 
                         if (i > 0)
                         {
-                            col.Item().PageBreak();
+                            coluna.Item().PageBreak();
                         }
 
-                        col.Item().PaddingBottom(10).AlignCenter().Width(450).Border(1, Unit.Point).BorderColor("#D4C5B3").Background("#FFFFFF").Padding(25).Column(card =>
+                        if (i == 0)
                         {
-                            card.Item().Text(prod.Nome)
-                                .FontFamily("Georgia").FontSize(24).Bold().FontColor("#3A1E1E").AlignCenter();
+                            coluna.Item()
+                                .Width(PageSizes.A4.Width)
+                                .Height(PageSizes.A4.Height)
+                                .Background("#FFFFFF")
+                                .Padding(45)
+                                .Border(1)
+                                .BorderColor("#B9A47A")
+                                .Padding(35)
+                                .AlignCenter()
+                                .AlignMiddle()
+                                .Column(capa =>
+                                {
+                                    if (!string.IsNullOrWhiteSpace(prod.CaminhoImagem) &&
+                                        File.Exists(prod.CaminhoImagem))
+                                    {
+                                        capa.Item()
+                                            .Width(430)
+                                            .Height(600)
+                                            .Image(prod.CaminhoImagem)
+                                            .FitArea();
+                                    }
+                                    else
+                                    {
+                                        capa.Item()
+                                            .Width(430)
+                                            .Height(600)
+                                            .Background("#F7F7F7")
+                                            .AlignCenter()
+                                            .AlignMiddle()
+                                            .Text("[ Sem Foto ]")
+                                            .FontFamily("Arial")
+                                            .FontSize(14)
+                                            .Italic()
+                                            .FontColor("#777777")
+                                            .AlignCenter();
+                                    }
+                                });
+                        }
+                        else
+                        {
+                            coluna.Item()
+                                .Width(PageSizes.A4.Width)
+                                .Height(PageSizes.A4.Height)
+                                .Background("#FFFFFF")
+                                .Padding(45)
+                                .Border(1)
+                                .BorderColor("#B9A47A")
+                                .Padding(35)
+                                .Column(pagina =>
+                                {
+                                    pagina.Item()
+                                        .PaddingTop(25)
+                                        .PaddingBottom(25)
+                                        .Text(prod.Nome)
+                                        .FontFamily("Georgia")
+                                        .FontSize(34)
+                                        .Bold()
+                                        .FontColor("#542020")
+                                        .AlignCenter();
 
-                            string textoDetalhes = prod.Descricao;
-                            if (prod.UsarEstoque)
-                            {
-                                textoDetalhes += $" • Disponível: {prod.QuantidadeEstoque} un";
-                            }
+                                    if (!string.IsNullOrWhiteSpace(prod.CaminhoImagem) &&
+                                        File.Exists(prod.CaminhoImagem))
+                                    {
+                                        pagina.Item()
+                                            .AlignCenter()
+                                            .Width(390)
+                                            .Height(480)
+                                            .Image(prod.CaminhoImagem)
+                                            .FitArea();
+                                    }
+                                    else
+                                    {
+                                        pagina.Item()
+                                            .AlignCenter()
+                                            .Width(390)
+                                            .Height(480)
+                                            .Background("#F7F7F7")
+                                            .AlignCenter()
+                                            .AlignMiddle()
+                                            .Text("[ Sem Foto ]")
+                                            .FontFamily("Arial")
+                                            .FontSize(14)
+                                            .Italic()
+                                            .FontColor("#777777")
+                                            .AlignCenter();
+                                    }
 
-                            if (!string.IsNullOrWhiteSpace(textoDetalhes))
-                            {
-                                card.Item().PaddingTop(5).Text(textoDetalhes)
-                                  .FontFamily("Arial").FontSize(14).FontColor("#5A4A42").AlignCenter();
-                            }
-
-                            if (!string.IsNullOrWhiteSpace(prod.CaminhoImagem) && File.Exists(prod.CaminhoImagem))
-                            {
-                                card.Item().PaddingTop(20).PaddingBottom(20).AlignCenter().Width(300).Height(300).Image(prod.CaminhoImagem);
-                            }
-                            else
-                            {
-                                card.Item().PaddingTop(40).PaddingBottom(40).AlignCenter().Text("[ Sem Foto ]").FontColor("#5A4A42").Italic();
-                            }
-
-                            card.Item().AlignCenter().Background("#D4AF37").PaddingVertical(8).PaddingHorizontal(25).Column(precoCol =>
-                            {
-                                precoCol.Item().Text($"R$ {prod.Preco:N2}")
-                                    .FontFamily("Arial").FontSize(16).Bold().FontColor("#FFFFFF").AlignCenter();
-                            });
-                        });
+                                    pagina.Item()
+                                        .Width(390)
+                                        .PaddingTop(15)
+                                        .AlignRight()
+                                        .Text($"R$ {prod.Preco:N2}")
+                                        .FontFamily("Georgia")
+                                        .FontSize(22)
+                                        .Bold()
+                                        .FontColor("#542020");
+                                });
+                        }
                     }
                 });
             });
         }).GeneratePdf(caminhoSalvar);
     }
+
     private async Task CompartilharArquivoPdf(string caminhoPdf, string nomeProduto)
     {
         if (File.Exists(caminhoPdf))
