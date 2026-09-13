@@ -4,6 +4,12 @@ A streamlined, lightweight, and elegant Android application developed in **C# (.
 
 ---
 
+## 🎬 Demonstration
+
+👉 **[Click here to watch the application demo video](https://github.com/user-attachments/assets/d60dfaba-1d50-49b5-ae80-94f3aa63f159)**
+
+---
+
 ## 🚀 Key Features
 * **Quick Product Registration:** Record name, description, weight, and price with automatic local persistence.
 * **Flexible Image Capture:** Capture real-time photos using the device's camera or select existing images directly from the gallery.
